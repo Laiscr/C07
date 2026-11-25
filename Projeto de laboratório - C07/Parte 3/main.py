@@ -1,9 +1,9 @@
-from cliente_repository import ClienteRepository
+from cliente_dao import ClienteDAO
 from menu import executar_menu
 
 
 def main() -> None:
-    repo = ClienteRepository()
+    repo = ClienteDAO()
     executar_menu(repo)
 
 

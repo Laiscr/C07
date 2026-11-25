@@ -29,8 +29,7 @@ CREATE TABLE IF NOT EXISTS Cliente ( -- entidade forte, a chave é o próprio cp
     bairro VARCHAR(30) NOT NULL,
     cep CHAR(9) NOT NULL, -- formato 00000-000
     cidade VARCHAR(45) NOT NULL,
-    PRIMARY KEY (cpf),
-    CONSTRAINT uq_Cliente_numero_casa UNIQUE (numero_casa)
+    PRIMARY KEY (cpf)
 ) ENGINE = InnoDB;
 
 CREATE TABLE IF NOT EXISTS Telefone_Cliente ( -- 1:N, um cliente pode ter vários telefones
