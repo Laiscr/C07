@@ -3,7 +3,6 @@ from typing import Optional
 from mysql.connector import Error, errorcode
 from conexao import get_conexao
 
-
 @dataclass
 class Cliente:
     cpf: str
@@ -13,7 +12,6 @@ class Cliente:
     bairro: str
     cep: str
     cidade: str
-
 
 class ClienteDAO:
     def criar(self, cliente: Cliente) -> str:
