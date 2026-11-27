@@ -96,7 +96,6 @@ def executar_menu(cliente_dao: ClienteDAO, filme_dao: FilmeDAO,
         print("4. Funcionários")
         print("5. Locações")
         print("6. Consultas")
-        print("7. Reajustar salário de todos os atendentes")
         print("0. Sair")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -224,6 +223,7 @@ def _menu_funcionarios(dao: FuncionarioDAO) -> None:
         print("4. Buscar funcionário por CPF")
         print("5. Atualizar funcionário")
         print("6. Remover funcionário")
+        print("7. Reajustar salário de todos os atendentes")
         print("0. Voltar")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -454,6 +454,7 @@ def _menu_filmes(dao: FilmeDAO) -> None:
         print("4. Buscar filmes por título")
         print("5. Atualizar filme")
         print("6. Remover filme")
+        print("7. Alterar disponibilidade de TODOS os filmes")
         print("0. Voltar")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -543,6 +544,15 @@ def _menu_filmes(dao: FilmeDAO) -> None:
                 print("Removido com sucesso."
                       if ok
                       else "Filme não encontrado.")
+
+            elif opcao == "7":
+                disponivel = _ler_disponivel("Marcar todos os filmes como (Sim/Nao): ")
+                confirma = _ler_texto("Isso altera a tabela inteira. Confirma? (Sim/Nao): ")
+                if confirma.strip().capitalize().startswith("S"):
+                    afetadas = dao.atualizar_disponibilidade_todos(disponivel)
+                    print(f"{afetadas} filme(s) atualizado(s).")
+                else:
+                    print("Operação cancelada.")
 
             elif opcao == "0":
                 break
