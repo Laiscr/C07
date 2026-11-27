@@ -1,21 +1,29 @@
 from mysql.connector import Error
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 from cliente_dao import Cliente, ClienteDAO
 from filme_dao import Filme, FilmeDAO
 from categoria_dao import Categoria, CategoriaDAO
+from funcionario_dao import Funcionario, FuncionarioDAO
+from locacao_dao import Locacao, LocacaoDAO
 
 
-def _ler_texto(prompt: str) -> str:
+def _ler_texto(prompt: str, padrao: Optional[str] = None) -> str:
     while True:
         valor = input(prompt).strip()
         if valor:
             return valor
+        if padrao is not None:
+            return padrao
         print("Entrada vazia. Tente novamente.")
 
 
-def _ler_int(prompt: str) -> int:
+def _ler_int(prompt: str, padrao: Optional[int] = None) -> int:
     while True:
         bruto = input(prompt).strip()
+        if not bruto and padrao is not None:
+            return padrao
         try:
             return int(bruto)
         except ValueError:
@@ -34,6 +42,38 @@ def _ler_int_opcional(prompt: str) -> Optional[int]:
             print("Digite um número inteiro válido ou deixe em branco.")
 
 
+def _ler_data(prompt: str, padrao: Optional[date] = None) -> date:
+    while True:
+        bruto = input(prompt).strip()
+        if not bruto and padrao is not None:
+            return padrao
+        try:
+            return datetime.strptime(bruto, "%Y-%m-%d").date()
+        except ValueError:
+            print("Digite uma data válida no formato AAAA-MM-DD.")
+
+
+def _ler_decimal(prompt: str, padrao: Optional[Decimal] = None) -> Decimal:
+    while True:
+        bruto = input(prompt).strip().replace(",", ".")
+        if not bruto and padrao is not None:
+            return padrao
+        try:
+            return Decimal(bruto)
+        except InvalidOperation:
+            print("Digite um valor numérico válido.")
+
+
+def _ler_cargo(prompt: str, padrao: Optional[str] = None) -> str:
+    while True:
+        valor = input(prompt).strip().capitalize()
+        if not valor and padrao:
+            return padrao
+        if valor in ("Atendente", "Gerente"):
+            return valor
+        print("Digite Atendente ou Gerente.")
+
+
 def _ler_disponivel(prompt: str) -> str:
     while True:
         valor = input(prompt).strip().capitalize()
@@ -44,12 +84,16 @@ def _ler_disponivel(prompt: str) -> str:
         print("Responda apenas Sim ou Nao.")
 
 
-def executar_menu(cliente_dao: ClienteDAO, filme_dao: FilmeDAO, categoria_dao: CategoriaDAO) -> None:
+def executar_menu(cliente_dao: ClienteDAO, filme_dao: FilmeDAO,
+                  categoria_dao: CategoriaDAO, funcionario_dao: FuncionarioDAO,
+                  locacao_dao: LocacaoDAO) -> None:
     while True:
         print("\n===== LOCADORA DE FILMES =====")
         print("1. Clientes")
         print("2. Filmes")
         print("3. Categorias")
+        print("4. Funcionários")
+        print("5. Locações")
         print("0. Sair")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -60,6 +104,10 @@ def executar_menu(cliente_dao: ClienteDAO, filme_dao: FilmeDAO, categoria_dao: C
             _menu_filmes(filme_dao)
         elif opcao == "3":
             _menu_categorias(categoria_dao)
+        elif opcao == "4":
+            _menu_funcionarios(funcionario_dao)
+        elif opcao == "5":
+            _menu_locacoes(locacao_dao)
         elif opcao == "0":
             print("Encerrando...")
             break
@@ -73,8 +121,9 @@ def _menu_clientes(cliente_dao: ClienteDAO) -> None:
         print("1. Cadastrar cliente")
         print("2. Listar clientes")
         print("3. Buscar cliente por CPF")
-        print("4. Atualizar cliente")
-        print("5. Remover cliente")
+        print("4. Buscar clientes por cidade")
+        print("5. Atualizar cliente")
+        print("6. Remover cliente")
         print("0. Voltar")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -112,6 +161,16 @@ def _menu_clientes(cliente_dao: ClienteDAO) -> None:
                     print("Cliente não encontrado.")
 
             elif opcao == "4":
+                cidade = _ler_texto("Cidade para buscar: ")
+                clientes = cliente_dao.buscar_por_cidade(cidade)
+                if not clientes:
+                    print("Nenhum cliente encontrado nessa cidade.")
+                else:
+                    print(f"\n{'CPF':<16} | {'NOME':<25} | CIDADE")
+                    for c in clientes:
+                        print(f"{c.cpf:<16} | {c.nome:<25} | {c.cidade}")
+
+            elif opcao == "5":
                 cpf = _ler_texto("CPF do cliente para atualizar: ")
                 atual = cliente_dao.buscar_por_cpf(cpf)
                 if not atual:
@@ -130,7 +189,7 @@ def _menu_clientes(cliente_dao: ClienteDAO) -> None:
                       if ok
                       else "Nenhuma alteração feita.")
 
-            elif opcao == "5":
+            elif opcao == "6":
                 cpf = _ler_texto("CPF do cliente para remover: ")
                 ok = cliente_dao.remover(cpf)
                 print("Removido com sucesso."
@@ -150,6 +209,225 @@ def _menu_clientes(cliente_dao: ClienteDAO) -> None:
             print(f"Erro no banco de dados: {e}")
 
 
+def _menu_funcionarios(dao: FuncionarioDAO) -> None:
+    while True:
+        print("\n=== MENU FUNCIONÁRIOS ===")
+        print("1. Cadastrar funcionário")
+        print("2. Listar funcionários")
+        print("3. Buscar funcionário por ID")
+        print("4. Buscar funcionário por CPF")
+        print("5. Atualizar funcionário")
+        print("6. Remover funcionário")
+        print("0. Voltar")
+
+        opcao = input("Escolha uma opção: ").strip()
+        try:
+            if opcao == "1":
+                cargo = _ler_cargo("Cargo (Atendente/Gerente): ")
+                nome = _ler_texto("Nome: ")
+                data_nascimento = _ler_data("Data de nascimento (AAAA-MM-DD): ")
+                cpf = _ler_texto("CPF (000.000.000-00): ")
+                salario = _ler_decimal("Salário: ")
+                turno = _ler_texto("Turno: ") if cargo == "Atendente" else None
+                limite = _ler_decimal("Limite de desconto de multa: ") \
+                    if cargo == "Gerente" else None
+                funcionario = Funcionario(
+                    idFuncionario=None, nome=nome, data_nascimento=data_nascimento,
+                    cpf=cpf, salario=salario, cargo=cargo, turno=turno,
+                    limite_desc_multa=limite)
+                novo_id = dao.criar(funcionario)
+                print(f"Funcionário {cargo.lower()} cadastrado com ID {novo_id}.")
+
+            elif opcao == "2":
+                funcionarios = dao.listar_todos()
+                if not funcionarios:
+                    print("Nenhum funcionário encontrado.")
+                else:
+                    print(f"\n{'ID':<4} | {'NOME':<25} | {'CPF':<16} | "
+                          f"{'CARGO':<10} | DETALHE")
+                    print("-" * 85)
+                    for f in funcionarios:
+                        detalhe = f"Turno: {f.turno}" if f.cargo == "Atendente" \
+                            else f"Limite multa: {f.limite_desc_multa}"
+                        print(f"{f.idFuncionario:<4} | {f.nome:<25} | {f.cpf:<16} | "
+                              f"{f.cargo:<10} | {detalhe}")
+
+            elif opcao == "3":
+                id_funcionario = _ler_int("ID do funcionário: ")
+                funcionario = dao.buscar_por_id(id_funcionario)
+                if funcionario:
+                    _exibir_funcionario(funcionario)
+                else:
+                    print("Funcionário não encontrado.")
+
+            elif opcao == "4":
+                cpf = _ler_texto("CPF do funcionário: ")
+                funcionario = dao.buscar_por_cpf(cpf)
+                if funcionario:
+                    _exibir_funcionario(funcionario)
+                else:
+                    print("Funcionário não encontrado.")
+
+            elif opcao == "5":
+                id_funcionario = _ler_int("ID do funcionário para atualizar: ")
+                atual = dao.buscar_por_id(id_funcionario)
+                if not atual:
+                    print("Funcionário não encontrado.")
+                    continue
+                cargo = _ler_cargo(
+                    f"Cargo (Atendente/Gerente) [{atual.cargo}]: ", atual.cargo)
+                nome = _ler_texto(f"Novo nome [{atual.nome}]: ", atual.nome)
+                data_nascimento = _ler_data(
+                    f"Nova data de nascimento [{atual.data_nascimento}] "
+                    "(AAAA-MM-DD): ", atual.data_nascimento)
+                cpf = _ler_texto(f"Novo CPF [{atual.cpf}]: ", atual.cpf)
+                salario = _ler_decimal(f"Novo salário [{atual.salario}]: ",
+                                       atual.salario)
+                turno = _ler_texto(
+                    f"Novo turno [{atual.turno or ''}]: ", atual.turno) \
+                    if cargo == "Atendente" else None
+                limite = _ler_decimal(
+                    f"Novo limite de desconto [{atual.limite_desc_multa or 0}]: ",
+                    atual.limite_desc_multa or Decimal("0.00")) \
+                    if cargo == "Gerente" else None
+                ok = dao.atualizar(Funcionario(
+                    idFuncionario=id_funcionario, nome=nome,
+                    data_nascimento=data_nascimento, cpf=cpf, salario=salario,
+                    cargo=cargo, turno=turno, limite_desc_multa=limite))
+                print("Atualizado com sucesso." if ok else "Funcionário não encontrado.")
+
+            elif opcao == "6":
+                id_funcionario = _ler_int("ID do funcionário para remover: ")
+                ok = dao.remover(id_funcionario)
+                print("Removido com sucesso." if ok else "Funcionário não encontrado.")
+
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida.")
+        except ValueError as e:
+            print(f"Operação recusada: {e}")
+        except Error as e:
+            print(f"Erro no banco de dados: {e}")
+
+
+def _exibir_funcionario(funcionario: Funcionario) -> None:
+    print(f"ID: {funcionario.idFuncionario}")
+    print(f"Nome: {funcionario.nome}")
+    print(f"Data de nascimento: {funcionario.data_nascimento}")
+    print(f"CPF: {funcionario.cpf}")
+    print(f"Salário: {funcionario.salario}")
+    print(f"Cargo: {funcionario.cargo}")
+    if funcionario.cargo == "Atendente":
+        print(f"Turno: {funcionario.turno}")
+    else:
+        print(f"Limite de desconto de multa: {funcionario.limite_desc_multa}")
+
+
+def _menu_locacoes(dao: LocacaoDAO) -> None:
+    while True:
+        print("\n=== MENU LOCAÇÕES ===")
+        print("1. Cadastrar locação")
+        print("2. Listar locações")
+        print("3. Buscar locação por ID")
+        print("4. Buscar locações por CPF do cliente")
+        print("5. Atualizar locação")
+        print("6. Remover locação")
+        print("0. Voltar")
+
+        opcao = input("Escolha uma opção: ").strip()
+        try:
+            if opcao == "1":
+                locacao = Locacao(
+                    idLocacao=None,
+                    data_locacao=_ler_data("Data da locação (AAAA-MM-DD): "),
+                    data_prev_devolucao=_ler_data(
+                        "Data prevista para devolução (AAAA-MM-DD): "),
+                    Cliente_cpf=_ler_texto("CPF do cliente: "),
+                    Funcionario_idFuncionario=_ler_int("ID do funcionário: "),
+                )
+                novo_id = dao.criar(locacao)
+                print(f"Locação cadastrada com ID {novo_id}.")
+
+            elif opcao == "2":
+                locacoes = dao.listar_todos()
+                if not locacoes:
+                    print("Nenhuma locação encontrada.")
+                else:
+                    print(f"\n{'ID':<4} | {'DATA':<10} | {'DEVOLUÇÃO':<10} | "
+                          f"{'CPF CLIENTE':<16} | ID FUNCIONÁRIO")
+                    print("-" * 70)
+                    for l in locacoes:
+                        print(f"{l.idLocacao:<4} | {l.data_locacao} | "
+                              f"{l.data_prev_devolucao} | {l.Cliente_cpf:<16} | "
+                              f"{l.Funcionario_idFuncionario}")
+
+            elif opcao == "3":
+                id_locacao = _ler_int("ID da locação: ")
+                locacao = dao.buscar_por_id(id_locacao)
+                if locacao:
+                    _exibir_locacao(locacao)
+                else:
+                    print("Locação não encontrada.")
+
+            elif opcao == "4":
+                cpf = _ler_texto("CPF do cliente: ")
+                locacoes = dao.buscar_por_cpf_cliente(cpf)
+                if not locacoes:
+                    print("Nenhuma locação encontrada para esse cliente.")
+                else:
+                    for locacao in locacoes:
+                        print("-" * 40)
+                        _exibir_locacao(locacao)
+
+            elif opcao == "5":
+                id_locacao = _ler_int("ID da locação para atualizar: ")
+                atual = dao.buscar_por_id(id_locacao)
+                if not atual:
+                    print("Locação não encontrada.")
+                    continue
+                locacao = Locacao(
+                    idLocacao=id_locacao,
+                    data_locacao=_ler_data(
+                        f"Nova data da locação [{atual.data_locacao}] "
+                        "(AAAA-MM-DD): ", atual.data_locacao),
+                    data_prev_devolucao=_ler_data(
+                        f"Nova devolução prevista [{atual.data_prev_devolucao}] "
+                        "(AAAA-MM-DD): ", atual.data_prev_devolucao),
+                    Cliente_cpf=_ler_texto(
+                        f"Novo CPF do cliente [{atual.Cliente_cpf}]: ",
+                        atual.Cliente_cpf),
+                    Funcionario_idFuncionario=_ler_int(
+                        f"Novo ID do funcionário "
+                        f"[{atual.Funcionario_idFuncionario}]: ",
+                        atual.Funcionario_idFuncionario),
+                )
+                ok = dao.atualizar(locacao)
+                print("Atualizada com sucesso." if ok else "Nenhuma alteração feita.")
+
+            elif opcao == "6":
+                id_locacao = _ler_int("ID da locação para remover: ")
+                ok = dao.remover(id_locacao)
+                print("Removida com sucesso." if ok else "Locação não encontrada.")
+
+            elif opcao == "0":
+                break
+            else:
+                print("Opção inválida.")
+        except ValueError as e:
+            print(f"Operação recusada: {e}")
+        except Error as e:
+            print(f"Erro no banco de dados: {e}")
+
+
+def _exibir_locacao(locacao: Locacao) -> None:
+    print(f"ID: {locacao.idLocacao}")
+    print(f"Data da locação: {locacao.data_locacao}")
+    print(f"Devolução prevista: {locacao.data_prev_devolucao}")
+    print(f"CPF do cliente: {locacao.Cliente_cpf}")
+    print(f"ID do funcionário: {locacao.Funcionario_idFuncionario}")
+
+
 # ==========================
 
 def _menu_filmes(dao: FilmeDAO) -> None:
@@ -158,8 +436,9 @@ def _menu_filmes(dao: FilmeDAO) -> None:
         print("1. Cadastrar filme")
         print("2. Listar filmes")
         print("3. Buscar filme por ID")
-        print("4. Atualizar filme")
-        print("5. Remover filme")
+        print("4. Buscar filmes por título")
+        print("5. Atualizar filme")
+        print("6. Remover filme")
         print("0. Voltar")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -208,6 +487,19 @@ def _menu_filmes(dao: FilmeDAO) -> None:
                     print("Filme não encontrado.")
 
             elif opcao == "4":
+                titulo = _ler_texto("Título para buscar: ")
+                filmes = dao.buscar_por_titulo(titulo)
+                if not filmes:
+                    print("Nenhum filme encontrado com esse título.")
+                else:
+                    print(f"\n{'ID':<4} | {'TÍTULO':<25} | {'ANO':<5} | "
+                          f"{'MIN':<4} | DISPONÍVEL")
+                    for f in filmes:
+                        print(f"{f.idFilme:<4} | {f.titulo:<25} | "
+                              f"{f.ano_lancamento:<5} | {f.duracao_min:<4} | "
+                              f"{f.disponivel}")
+
+            elif opcao == "5":
                 id_filme = _ler_int("ID do filme para atualizar: ")
                 atual = dao.buscar_por_id(id_filme)
                 if not atual:
@@ -230,7 +522,7 @@ def _menu_filmes(dao: FilmeDAO) -> None:
                       if ok
                       else "Nenhuma alteração feita.")
 
-            elif opcao == "5":
+            elif opcao == "6":
                 id_filme = _ler_int("ID do filme para remover: ")
                 ok = dao.remover(id_filme)
                 print("Removido com sucesso."
@@ -257,8 +549,9 @@ def _menu_categorias(dao: CategoriaDAO) -> None:
         print("1. Cadastrar categoria")
         print("2. Listar categorias")
         print("3. Buscar categoria por ID")
-        print("4. Atualizar categoria")
-        print("5. Remover categoria")
+        print("4. Buscar categorias por faixa etária")
+        print("5. Atualizar categoria")
+        print("6. Remover categoria")
         print("0. Voltar")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -290,6 +583,17 @@ def _menu_categorias(dao: CategoriaDAO) -> None:
                     print("Categoria não encontrada.")
 
             elif opcao == "4":
+                faixa_etaria = _ler_texto("Faixa etária para buscar: ")
+                categorias = dao.buscar_por_faixa_etaria(faixa_etaria)
+                if not categorias:
+                    print("Nenhuma categoria encontrada com essa faixa etária.")
+                else:
+                    print(f"\n{'ID':<4} | Faixa etária")
+                    print("-" * 30)
+                    for c in categorias:
+                        print(f"{c.idCategoria:<4} | {c.faixa_etaria}")
+
+            elif opcao == "5":
                 id_categoria = _ler_int("ID da categoria para atualizar: ")
                 atual = dao.buscar_por_id(id_categoria)
                 if not atual:
@@ -302,7 +606,7 @@ def _menu_categorias(dao: CategoriaDAO) -> None:
                       if ok
                       else "Nenhuma alteração feita.")
 
-            elif opcao == "5":
+            elif opcao == "6":
                 id_categoria = _ler_int("ID da categoria para remover: ")
                 ok = dao.remover(id_categoria)
                 print("Removida com sucesso."

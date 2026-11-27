@@ -75,6 +75,24 @@ class ClienteDAO:
             if conn and conn.is_connected():
                 conn.close()
 
+    def buscar_por_cidade(self, cidade: str) -> list[Cliente]:
+        sql = ("SELECT cpf, nome, rua, numero_casa, bairro, cep, cidade "
+               "FROM Cliente "
+               "WHERE cidade LIKE %s "
+               "ORDER BY nome ASC")
+        conn = None
+        cursor = None
+        try:
+            conn = get_conexao()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql, (f"%{cidade}%",))
+            return [Cliente(**row) for row in cursor.fetchall()]
+        finally:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
+                conn.close()
+
     def atualizar(self, cliente: Cliente) -> bool:
         if not cliente.cpf: #not pega None e string vazia
             raise ValueError("CPF é obrigatório para atualizar um cliente.")

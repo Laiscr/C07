@@ -125,6 +125,18 @@ Foram feitos em cima da mesma regra, a multa por atraso, para um usar o outro:
 
 Algumas tabelas começam com mais e terminam com menos por causa dos DELETE de demonstração. Outras crescem no meio do script, com o teste do trigger e com a procedure. Os COUNT no fim do arquivo mostram esses números.
 
+## Parte 3 - CRUD
+
+A aplicação Python oferece submenus de cadastro, listagem, busca, atualização e remoção
+para Cliente, Filme, Categoria, Funcionário e Locação. O cadastro de funcionário pede
+seu cargo (Atendente ou Gerente) e grava a tabela `Funcionario` junto com a tabela da
+subclasse correspondente na mesma transação. As locações referenciam o CPF de um
+cliente e o ID de um funcionário já cadastrados.
+
+Além da busca pela chave primária, há buscas por cidade do cliente, título do filme,
+faixa etária da categoria, CPF do funcionário e CPF do cliente nas locações. As buscas
+por cidade, título e faixa etária aceitam correspondência parcial.
+
 ### Materiais de apoio
 * Slides das aulas de laboratório
 * [C07 - Gemini](https://share.gemini.google/mYUAVWOlzP42)

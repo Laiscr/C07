@@ -67,6 +67,24 @@ class CategoriaDAO:
             if conn and conn.is_connected():
                 conn.close()
 
+    def buscar_por_faixa_etaria(self, faixa_etaria: str) -> list[Categoria]:
+        sql = ("SELECT idCategoria, faixa_etaria "
+               "FROM Categoria "
+               "WHERE faixa_etaria LIKE %s "
+               "ORDER BY idCategoria ASC")
+        conn = None
+        cursor = None
+        try:
+            conn = get_conexao()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql, (f"%{faixa_etaria}%",))
+            return [Categoria(**row) for row in cursor.fetchall()]
+        finally:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
+                conn.close()
+
     def atualizar(self, categoria: Categoria) -> bool:
         if categoria.idCategoria is None: #is None, porque o not pegaria o zero tambem
             raise ValueError("idCategoria é obrigatório para atualizar uma categoria.")

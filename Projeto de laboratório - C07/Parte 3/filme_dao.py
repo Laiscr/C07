@@ -82,6 +82,25 @@ class FilmeDAO:
             if conn and conn.is_connected():
                 conn.close()
 
+    def buscar_por_titulo(self, titulo: str) -> list[Filme]:
+        sql = ("SELECT idFilme, titulo, duracao_min, ano_lancamento, "
+               "Categoria_idCategoria, Filme_idFilme_sequencia, disponivel "
+               "FROM Filme "
+               "WHERE titulo LIKE %s "
+               "ORDER BY titulo ASC")
+        conn = None
+        cursor = None
+        try:
+            conn = get_conexao()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(sql, (f"%{titulo}%",))
+            return [Filme(**row) for row in cursor.fetchall()]
+        finally:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
+                conn.close()
+
     def atualizar(self, filme: Filme) -> bool:
         if filme.idFilme is None: #aqui eh is none, porque id 0 nao existe mas o not pegaria o zero
             raise ValueError("idFilme é obrigatório para atualizar um filme.")
