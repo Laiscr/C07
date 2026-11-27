@@ -125,20 +125,130 @@ Foram feitos em cima da mesma regra, a multa por atraso, para um usar o outro:
 
 Algumas tabelas começam com mais e terminam com menos por causa dos DELETE de demonstração. Outras crescem no meio do script, com o teste do trigger e com a procedure. Os COUNT no fim do arquivo mostram esses números.
 
-## Parte 3 - CRUD
-
-A aplicação Python oferece submenus de cadastro, listagem, busca, atualização e remoção
-para Cliente, Filme, Categoria, Funcionário e Locação. O cadastro de funcionário pede
-seu cargo (Atendente ou Gerente) e grava a tabela `Funcionario` junto com a tabela da
-subclasse correspondente na mesma transação. As locações referenciam o CPF de um
-cliente e o ID de um funcionário já cadastrados.
-
-Além da busca pela chave primária, há buscas por cidade do cliente, título do filme,
-faixa etária da categoria, CPF do funcionário e CPF do cliente nas locações. As buscas
-por cidade, título e faixa etária aceitam correspondência parcial.
-
 ### Materiais de apoio
 * Slides das aulas de laboratório
 * [C07 - Gemini](https://share.gemini.google/mYUAVWOlzP42)
 * [Documentação do MySQL](https://dev.mysql.com/doc/refman/8.0/en/create-table.html)
 
+# Parte 3 - Integração com Python
+
+A aplicação é um programa de terminal escrito em Python, usando o conector oficial
+`mysql-connector-python`. O SQL fica isolado em arquivos DAO, um por entidade, e o
+`main.py` só monta os objetos e chama o menu.
+
+### Como executar
+
+Pré-requisitos: Python 3.10 ou superior e o MySQL rodando na máquina.
+
+1. Rode o script `Parte 2/Parte 2.sql` no MySQL Workbench. Ele apaga e recria o banco
+   `locadora_filmes` do zero, já com os dados de teste. A aplicação não cria tabela
+   nenhuma, só usa o que está lá.
+
+2. Crie e ative o ambiente virtual, a partir da raiz do repositório:
+
+   ```
+   python -m venv .venv
+   .venv\Scripts\activate       (Windows)
+   source .venv/bin/activate    (Linux/macOS)
+   ```
+
+3. Instale a dependência:
+
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Ajuste as credenciais, se as suas forem diferentes de `root`/`root`. O `conexao.py`
+   lê de variáveis de ambiente, então não é preciso editar o arquivo:
+
+   ```
+   set DB_PASSWORD=suasenha       (Windows)
+   export DB_PASSWORD=suasenha    (Linux/macOS)
+   ```
+
+   As variáveis aceitas são `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME`.
+   Sem nenhuma delas, valem os padrões: localhost, 3306, root, root, locadora_filmes.
+
+5. Execute a aplicação:
+
+   ```
+   python "Parte 3/main.py"
+   ```
+
+Para testar só a conexão, sem abrir o menu, rode `python "Parte 3/conexao.py"`. Ele
+imprime a versão do servidor e lista os clientes.
+
+### Arquivos
+
+| Arquivo | O que faz |
+|---|---|
+| `conexao.py` | Centraliza host, porta, usuário, senha e banco. Todo DAO importa o `get_conexao()` daqui |
+| `cliente_dao.py` | CRUD de Cliente |
+| `filme_dao.py` | CRUD de Filme |
+| `categoria_dao.py` | CRUD de Categoria |
+| `funcionario_dao.py` | CRUD de Funcionário, incluindo as subclasses Atendente e Gerente |
+| `locacao_dao.py` | CRUD de Locação |
+| `consulta_dao.py` | As consultas com join e a leitura da view |
+| `devolucao_dao.py` | Registro de devolução, chamando a procedure da Parte 2 |
+| `menu.py` | Menu principal e submenus |
+| `main.py` | Ponto de entrada |
+
+### O menu
+
+O menu principal dá acesso a cinco entidades e a um submenu de consultas. Cada submenu
+de entidade tem cadastro, listagem geral, busca por chave, busca por atributo,
+atualização e remoção.
+
+O cadastro de funcionário pede o cargo e grava a tabela `Funcionario` junto com a
+tabela da subclasse correspondente na mesma transação, com rollback se qualquer um dos
+dois INSERT falhar. As locações referenciam o CPF de um cliente e o ID de um
+funcionário já cadastrados.
+
+Além da busca pela chave primária, há buscas por cidade do cliente, título do filme,
+faixa etária da categoria, CPF do funcionário e CPF do cliente nas locações. As buscas
+por cidade, título e faixa etária aceitam correspondência parcial.
+
+### Onde está cada requisito
+
+| Requisito | Onde |
+|---|---|
+| Menu interativo com CRUD | `menu.py`, cinco submenus de entidade |
+| 5 entidades gerenciáveis | Cliente, Filme, Categoria, Funcionário e Locação |
+| Busca geral | `listar_todos()` em cada DAO |
+| Busca por filtro | `buscar_por_cpf`, `buscar_por_id`, `buscar_por_cidade`, `buscar_por_titulo`, `buscar_por_faixa_etaria`, `buscar_por_cpf_cliente` |
+| Update com filtro | `atualizar()` em cada DAO, com WHERE na chave primária |
+| Update sem filtro | `atualizar_disponibilidade_todos()` em `filme_dao.py`, um UPDATE sem WHERE, e `reajustar_salario_atendentes()` em `funcionario_dao.py`, que atinge o grupo inteiro por subquery. Os dois pedem confirmação antes de executar |
+| Delete com filtro | `remover()` em cada DAO, sempre com WHERE na chave primária. Não existe caminho no programa que apague em massa |
+| Join 1:1 | Locação com Devolução, submenu Consultas opção 1 |
+| Join 1:N | Cliente com Telefone_Cliente, opção 2 |
+| Join N:M | Filme com Ator via Atuação, opção 3 |
+
+### Uso dos objetos da Parte 2
+
+A aplicação não refaz no Python o que já estava resolvido no banco:
+
+* A opção 4 do submenu Consultas lê a view `vw_locacoes_detalhadas` em vez de repetir
+  os cinco joins. A view também protege as tabelas, porque quem consulta ela não
+  enxerga o salário do funcionário.
+* A opção 7 do submenu Locações chama a procedure `sp_registrar_devolucao` com
+  `callproc`. As três validações (locação existe, ainda não foi devolvida, data
+  coerente) acontecem dentro da procedure, e a multa é calculada pela trigger
+  `trg_devolucao_calcula_multa`, que usa a function `fn_calcular_multa`. O Python só
+  envia o ID e a data.
+
+### Tratamento de erros
+
+Toda query usa parâmetros `%s`, nunca concatenação, o que fecha a porta para SQL
+injection. Os erros do banco são traduzidos antes de chegar à tela:
+
+| Código | Quando acontece | Mensagem |
+|---|---|---|
+| 1451 | Apagar um registro que ainda é referenciado | "Esse cliente tem locações registradas e não pode ser removido", e equivalentes para filme, categoria e funcionário |
+| 1452 | Cadastrar apontando para um pai inexistente | "Categoria ou filme da sequência não existe" |
+| 1062 | Violação de UNIQUE | "Já existe um funcionário com esse CPF" |
+
+### Materiais de apoio
+* Slides das aulas de laboratório
+* [Laís - Gemini](https://share.gemini.google/Nj10vbdq1Bhe)
+* [Google for Education - Python](https://developers.google.com/edu/python?hl=pt-br)
+* [Python - Glossary](https://docs.python.org/pt-br/3/glossary.html)
