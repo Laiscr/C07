@@ -213,6 +213,31 @@ class FuncionarioDAO:
             if conn and conn.is_connected():
                 conn.close()
 
+    def reajustar_salario_atendentes(self, percentual: Decimal) -> int:
+        """UPDATE em massa: reajusta de uma vez o salário de todos os atendentes."""
+        sql = (
+            "UPDATE Funcionario SET salario = salario * (1 + %s / 100) "
+            "WHERE idFuncionario IN "  # ------------
+            "(SELECT Funcionario_idFuncionario FROM Funcionario_Atendente)"
+        )
+        conn = None
+        cursor = None
+        try:
+            conn = get_conexao()
+            cursor = conn.cursor()
+            cursor.execute(sql, (percentual,))
+            conn.commit()
+            return cursor.rowcount
+        except Error:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
+                conn.close()
+
     def remover(self, id_funcionario: int) -> bool:
         conn = None
         cursor = None

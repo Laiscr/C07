@@ -132,6 +132,27 @@ class FilmeDAO:
             if conn and conn.is_connected():
                 conn.close()
 
+    def atualizar_disponibilidade_todos(self, disponivel: str) -> int:
+        """UPDATE sem filtro: muda a disponibilidade de todos os filmes de uma vez."""
+        sql = "UPDATE Filme SET disponivel = %s"
+        conn = None
+        cursor = None
+        try:
+            conn = get_conexao()
+            cursor = conn.cursor()
+            cursor.execute(sql, (disponivel,))
+            conn.commit()
+            return cursor.rowcount
+        except Error:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if cursor:
+                cursor.close()
+            if conn and conn.is_connected():
+                conn.close()
+
     def remover(self, id_filme: int) -> bool:
         sql = "DELETE FROM Filme WHERE idFilme = %s"
         conn = None

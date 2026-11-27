@@ -1,15 +1,15 @@
 # conexao.py
 #centraliza o acesso ao banco de dados MySQL.
 #nenhum outro arquivo do projeto repete host, usuario ou senha (de acordo com o material).
-
+import os
 import mysql.connector
 
 CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "root",
-    "password": "root",
-    "database": "locadora_filmes",
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", "3306")),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", "root"),
+    "database": os.getenv("DB_NAME", "locadora_filmes"),
 }
 
 

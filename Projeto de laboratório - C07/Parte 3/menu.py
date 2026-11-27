@@ -7,6 +7,7 @@ from filme_dao import Filme, FilmeDAO
 from categoria_dao import Categoria, CategoriaDAO
 from funcionario_dao import Funcionario, FuncionarioDAO
 from locacao_dao import Locacao, LocacaoDAO
+from consulta_dao import ConsultaDAO
 
 
 def _ler_texto(prompt: str, padrao: Optional[str] = None) -> str:
@@ -86,7 +87,7 @@ def _ler_disponivel(prompt: str) -> str:
 
 def executar_menu(cliente_dao: ClienteDAO, filme_dao: FilmeDAO,
                   categoria_dao: CategoriaDAO, funcionario_dao: FuncionarioDAO,
-                  locacao_dao: LocacaoDAO) -> None:
+                  locacao_dao: LocacaoDAO, consulta_dao: ConsultaDAO) -> None:
     while True:
         print("\n===== LOCADORA DE FILMES =====")
         print("1. Clientes")
@@ -94,6 +95,8 @@ def executar_menu(cliente_dao: ClienteDAO, filme_dao: FilmeDAO,
         print("3. Categorias")
         print("4. Funcionários")
         print("5. Locações")
+        print("6. Consultas")
+        print("7. Reajustar salário de todos os atendentes")
         print("0. Sair")
 
         opcao = input("Escolha uma opção: ").strip()
@@ -108,6 +111,8 @@ def executar_menu(cliente_dao: ClienteDAO, filme_dao: FilmeDAO,
             _menu_funcionarios(funcionario_dao)
         elif opcao == "5":
             _menu_locacoes(locacao_dao)
+        elif opcao == "6":
+            _menu_consultas(consulta_dao)
         elif opcao == "0":
             print("Encerrando...")
             break
@@ -208,6 +213,7 @@ def _menu_clientes(cliente_dao: ClienteDAO) -> None:
         except Error as e:
             print(f"Erro no banco de dados: {e}")
 
+# ==========================
 
 def _menu_funcionarios(dao: FuncionarioDAO) -> None:
     while True:
@@ -301,6 +307,15 @@ def _menu_funcionarios(dao: FuncionarioDAO) -> None:
                 ok = dao.remover(id_funcionario)
                 print("Removido com sucesso." if ok else "Funcionário não encontrado.")
 
+            elif opcao == "7":
+                percentual = _ler_decimal("Percentual de reajuste (ex.: 8): ")
+                confirma = _ler_texto("Isso altera todos os atendentes. Confirma? (Sim/Nao): ")
+                if confirma.strip().capitalize().startswith("S"):
+                    afetados = dao.reajustar_salario_atendentes(percentual)
+                    print(f"{afetados} atendente(s) reajustado(s).")
+                else:
+                    print("Operação cancelada.")
+
             elif opcao == "0":
                 break
             else:
@@ -323,6 +338,7 @@ def _exibir_funcionario(funcionario: Funcionario) -> None:
     else:
         print(f"Limite de desconto de multa: {funcionario.limite_desc_multa}")
 
+# ==========================
 
 def _menu_locacoes(dao: LocacaoDAO) -> None:
     while True:
@@ -426,7 +442,6 @@ def _exibir_locacao(locacao: Locacao) -> None:
     print(f"Devolução prevista: {locacao.data_prev_devolucao}")
     print(f"CPF do cliente: {locacao.Cliente_cpf}")
     print(f"ID do funcionário: {locacao.Funcionario_idFuncionario}")
-
 
 # ==========================
 
@@ -540,7 +555,6 @@ def _menu_filmes(dao: FilmeDAO) -> None:
         except Error as e:
             print(f"Erro no banco de dados: {e}")
 
-
 # ===================
 
 def _menu_categorias(dao: CategoriaDAO) -> None:
@@ -621,5 +635,61 @@ def _menu_categorias(dao: CategoriaDAO) -> None:
 
         except ValueError as e:
             print(f"Operação recusada: {e}")
+        except Error as e:
+            print(f"Erro no banco de dados: {e}")
+
+# ==========================
+
+def _menu_consultas(dao: ConsultaDAO) -> None:
+    while True:
+        print("\n=== MENU CONSULTAS ===")
+        print("1. Locações e devoluções (1:1)")
+        print("2. Clientes e telefones (1:N)")
+        print("3. Filmes e atores (N:M)")
+        print("0. Voltar")
+
+        opcao = input("Escolha uma opção: ").strip()
+
+        try:
+            if opcao == "1":
+                linhas = dao.locacoes_com_devolucao()
+                if not linhas:
+                    print("Nenhuma locação encontrada.")
+                else:
+                    print(f"\n{'LOC':<4} | {'CLIENTE':<22} | {'PRAZO':<10} | " f"{'DEVOLVIDO':<10} | MULTA")
+                    print("-" * 70)
+                    for l in linhas:
+                        devolvido = (l["devolvido_em"].strftime("%d/%m/%Y")
+                                     if l["devolvido_em"] else "em aberto")
+                        multa = (f"R$ {l['multa']:.2f}"
+                                 if l["multa"] is not None else "-")
+                        print(f"{l['locacao']:<4} | {l['cliente']:<22} | " f"{l['prazo'].strftime('%d/%m/%Y'):<10} | " f"{devolvido:<10} | {multa}")
+
+            elif opcao == "2":
+                linhas = dao.clientes_com_telefones()
+                if not linhas:
+                    print("Nenhum telefone cadastrado.")
+                else:
+                    print(f"\n{'CLIENTE':<22} | {'CIDADE':<24} | TELEFONE")
+                    print("-" * 70)
+                    for l in linhas:
+                        print(f"{l['cliente']:<22} | {l['cidade']:<24} | " f"{l['telefone']}")
+
+            elif opcao == "3":
+                linhas = dao.filmes_com_atores()
+                if not linhas:
+                    print("Nenhuma atuação cadastrada.")
+                else:
+                    print(f"\n{'FILME':<25} | {'ANO':<5} | {'ATOR':<20} | PAPEL")
+                    print("-" * 70)
+                    for l in linhas:
+                        print(f"{l['filme']:<25} | {l['ano']:<5} | " f"{l['ator']:<20} | {l['papel']}")
+
+            elif opcao == "0":
+                break
+
+            else:
+                print("Opção inválida.")
+
         except Error as e:
             print(f"Erro no banco de dados: {e}")
